@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Autonomous Power Shortage Management & Fair Load Allocation</title>
+<meta name="description" content="One-page interactive Three.js science-fair presentation explaining power shortage, selective load shedding, fair allocation, and the ESP32 prototype." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+<div class="visual-stage" id="visualStage" aria-hidden="true">
+  <div id="sceneA" class="scene-image is-on" style="background-image:url('assets/system_map.png')"></div>
+  <div id="sceneB" class="scene-image" style="background-image:url('assets/blackout.png')"></div>
+  <div id="sceneC" class="scene-image" style="background-image:url('assets/system_map.png')"></div>
+  <canvas id="fx"></canvas>
+
+  <div class="map-labels" id="mapLabels">
+    <div class="map-label grid-label"><span class="pin green"></span><b>GRID</b><small>National supply</small></div>
+    <div class="map-label sub-label"><span class="pin purple"></span><b>SUBSTATION</b><small>Central ESP32 + relay</small></div>
+    <div class="map-label uni-label"><span class="pin blue"></span><b>UNIVERSITY NODE</b><small>ESP32 · C1–C4</small></div>
+    <div class="map-label house-label"><span class="pin teal"></span><b>HOUSE NODE</b><small>ESP32 · C5–C8</small></div>
+  </div>
+
+  <div class="visual-demo" id="visualDemo" aria-hidden="true">
+    <div class="demo-head">
+      <div><small>LIVE VISUAL DEMO</small><b id="visualState">NORMAL</b></div>
+      <div class="supply-ring"><span id="visualSupply">10.0</span><small>MW</small></div>
+    </div>
+    <div class="zone-demo university-demo">
+      <div class="zone-demo-head"><b>University</b><span>Critical first</span></div>
+      <div class="device-grid" id="uniDevices"></div>
+    </div>
+    <div class="zone-demo house-demo">
+      <div class="zone-demo-head"><b>House</b><span>Fridge & lighting protected</span></div>
+      <div class="device-grid" id="houseDevices"></div>
+    </div>
+  </div>
+
+  <div class="scene-caption" id="sceneCaption">Grid → Substation / Central Controller → University Node + House Node</div>
+</div>
+
+<main class="story">
+<section class="story-section hero" id="top" data-scene="solution" data-flow="normal">
+  <div class="section-inner">
+    <p class="eyebrow">One-page interactive science-fair presentation</p>
+    <h1>Autonomous Power<br><span>Shortage Management</span><br>& Fair Load Allocation</h1>
+    <p class="lead">A low-cost ESP32 prototype that reduces unnecessary load shedding by measuring available power, protecting critical services, and selectively curtailing only the flexible loads that must be turned off.</p>
+    <div class="hero-facts">
+      <div><b>3</b><span>ESP32 controllers</span></div>
+      <div><b>4</b><span>INA219 sensors</span></div>
+      <div><b>8</b><span>controlled loads</span></div>
+    </div>
+    <div class="truth-card">
+      <strong>Important:</strong> the project does not create extra electricity. It reduces <em>unnecessary</em> load shedding by switching only the loads that must be curtailed when supply is short.
+    </div>
+    <div class="scroll-cue">Scroll to understand the whole project <span>↓</span></div>
+  </div>
+</section>
+
+<section class="story-section" id="problem" data-scene="blackout" data-flow="failure">
+  <div class="section-inner">
+    <p class="section-no">01 · CURRENT PROBLEM</p>
+    <h2>What happens today when supply becomes insufficient?</h2>
+    <p class="intro">In a conventional shortage response, a whole feeder or area may be disconnected. The system usually does not know which individual appliance is critical and which one can wait.</p>
+    <div class="timeline">
+      <article><i>1</i><div><b>Demand becomes higher than supply</b><span>There is not enough power to serve every connected load at the same time.</span></div></article>
+      <article><i>2</i><div><b>A feeder or area is disconnected</b><span>University and homes on that line may lose supply together.</span></div></article>
+      <article><i>3</i><div><b>Critical and flexible loads are treated alike</b><span>A server, refrigerator, fan and AC can all be interrupted by the same decision.</span></div></article>
+    </div>
+    <div class="callout red">Whole-area outage is simple to operate — but it can interrupt far more load than the actual shortage requires.</div>
+  </div>
+</section>
+
+<section class="story-section" id="effects" data-scene="blackout" data-flow="failure">
+  <div class="section-inner">
+    <p class="section-no">02 · WHAT THIS CAUSES</p>
+    <h2>The impact is more than “the lights went out.”</h2>
+    <div class="impact-grid">
+      <article><span class="ico">🖥️</span><b>Server & network interruption</b><p>Unexpected shutdown can interrupt digital services and risk data or ongoing work.</p></article>
+      <article><span class="ico">🎓</span><b>Classes & lab work stop</b><p>Projectors, computers and teaching equipment become unavailable.</p></article>
+      <article><span class="ico">🧊</span><b>Food can spoil</b><p>A refrigerator is an essential household load because long outages can damage stored food or medicine.</p></article>
+      <article><span class="ico">⚖️</span><b>Unfair interruption</b><p>The same users can suffer repeatedly even when other flexible loads could have been curtailed instead.</p></article>
+    </div>
+    <p class="plain-note">This is why the House side in our prototype treats the <strong>refrigerator as essential</strong>, while fan and AC are flexible.</p>
+  </div>
+</section>
+
+<section class="story-section" id="backup" data-scene="blackout" data-flow="low">
+  <div class="section-inner">
+    <p class="section-no">03 · WHY IPS / GENERATOR IS NOT THE COMPLETE ANSWER</p>
+    <h2>Backup changes the power source. It does not remove the capacity limit.</h2>
+    <div class="capacity-demo">
+      <div class="bar-title"><span>Example demand</span><b>8 kW</b></div>
+      <div class="bar"><i style="--w:100%"></i></div>
+      <div class="bar-title"><span>Generator / reduced grid capacity</span><b>5 kW</b></div>
+      <div class="bar green"><i style="--w:62.5%"></i></div>
+      <p>Even after starting a generator, we still need to decide <strong>which 5 kW should run</strong>.</p>
+    </div>
+    <div class="four-points">
+      <span>Battery energy is limited</span><span>Generator capacity is limited</span><span>Fuel + maintenance cost money</span><span>Large backup systems are not affordable for everyone</span>
+    </div>
+    <div class="callout">Our controller can manage grid, battery, generator or solar power — because it manages <strong>demand</strong>, not the source.</div>
+  </div>
+</section>
+
+<section class="story-section" id="solution" data-scene="hardware" data-flow="normal">
+  <div class="section-inner">
+    <p class="section-no">04 · OUR SOLUTION</p>
+    <h2>Three smart controllers make one coordinated decision.</h2>
+    <p class="intro">The prototype separates the system into a central decision point and two local zones. Each zone knows its loads; the central controller knows the available supply.</p>
+    <div class="architecture-cards">
+      <article class="accent-purple"><small>SUBSTATION / CENTRAL</small><b>Central ESP32</b><p>Reads available supply, runs the allocation algorithm, updates LCD/buzzer, and sends target states.</p></article>
+      <article class="accent-blue"><small>UNIVERSITY NODE</small><b>ESP32 + 2 INA219</b><p>Monitors university groups and controls C1–C4.</p></article>
+      <article class="accent-green"><small>HOUSE NODE</small><b>ESP32 + 2 INA219</b><p>Monitors household groups and controls C5–C8.</p></article>
+    </div>
+    <div class="hardware-strip"><b>Prototype hardware</b><span>3× ESP32</span><span>4× INA219</span><span>8-channel relay</span><span>1602 LCD</span><span>Buzzer</span><span>ESP-NOW</span></div>
+  </div>
+</section>
+
+<section class="story-section" id="reduce" data-scene="solution" data-flow="normal">
+  <div class="section-inner">
+    <p class="section-no">05 · HOW IT REDUCES LOAD SHEDDING</p>
+    <h2>Reduce the shortage by switching only what is necessary.</h2>
+    <p class="intro">The controller continuously compares requested demand with a safe version of the available supply.</p>
+    <div class="formula"><span>Safe capacity</span><b>= Available supply × 0.97</b><small>3% safety margin in the demo</small></div>
+    <div class="reduce-steps">
+      <article><i>01</i><b>No shortage?</b><p>If all requested loads fit, every load stays ON. Nothing is shed “just in case.”</p></article>
+      <article><i>02</i><b>Partial shortage?</b><p>The controller turns OFF only enough flexible demand to bring total use back inside the safe capacity — for example, an AC may switch OFF while a server and refrigerator stay ON.</p></article>
+      <article><i>03</i><b>Supply improves?</b><p>Loads are restored in stages as soon as headroom returns, so usable electricity is not left idle.</p></article>
+    </div>
+    <div class="compare-mini"><div><small>Conventional</small><b>One switch → whole zone OFF</b></div><div><small>Proposed</small><b>Selective curtailment → critical loads continue</b></div></div>
+  </div>
+</section>
+
+<section class="story-section" id="logic" data-scene="solution" data-flow="shortage">
+  <div class="section-inner wide-copy">
+    <p class="section-no">06 · IF LOAD SHEDDING IS UNAVOIDABLE</p>
+    <h2>Then the system decides <em>what must stay on</em> and <em>what can wait.</em></h2>
+    <div class="zones">
+      <div class="zone">
+        <div class="zone-head blue"><span>UNIVERSITY</span><b>C1–C4</b></div>
+        <div class="load-row p1"><code>C1</code><div><b>Server / Core Network</b><span>Highest protection</span></div></div>
+        <div class="load-row p2"><code>C2</code><div><b>Classroom / Projector</b><span>Important; stronger protection when class is active</span></div></div>
+        <div class="load-row p3"><code>C3</code><div><b>Fan</b><span>Flexible</span></div></div>
+        <div class="load-row p4"><code>C4</code><div><b>AC</b><span>High-power flexible load</span></div></div>
+      </div>
+      <div class="zone">
+        <div class="zone-head green"><span>HOUSE</span><b>C5–C8</b></div>
+        <div class="load-row p1"><code>C5</code><div><b>Refrigerator</b><span>Essential — food/medicine preservation</span></div></div>
+        <div class="load-row p2"><code>C6</code><div><b>Essential lighting</b><span>Important low-power household service</span></div></div>
+        <div class="load-row p3"><code>C7</code><div><b>Fan</b><span>Flexible comfort load</span></div></div>
+        <div class="load-row p4"><code>C8</code><div><b>AC</b><span>Lowest / flexible high-power load</span></div></div>
+      </div>
+    </div>
+    <div class="logic-strip">
+      <div><i>1</i><span>Protect critical + essential</span></div><b>→</b><div><i>2</i><span>Keep important loads if capacity permits</span></div><b>→</b><div><i>3</i><span>Choose the best flexible combination</span></div><b>→</b><div><i>4</i><span>Measure again & verify</span></div>
+    </div>
+    <div class="fairness-note"><strong>Fairness rule:</strong> when comparable flexible loads cannot all run, the one that has already been OFF longer gets an advantage in a later cycle. <strong>Fridge is not part of fast rotation</strong>; real compressor loads need longer minimum ON/OFF times.</div>
+  </div>
+</section>
+
+<section class="story-section simulator-section" id="simulator" data-scene="solution" data-flow="dynamic">
+  <div class="section-inner full-width">
+    <p class="section-no">07 · LIVE DEMO</p>
+    <h2>Move the supply slider — watch AC, fans and other loads switch ON/OFF live.</h2>
+    <div class="sim-wrap">
+      <div class="sim-panel">
+        <div class="slider-head"><span>Available supply</span><b id="supplyValue">10.0 MW</b></div>
+        <input id="supplySlider" type="range" min="0" max="10" step="0.1" value="10" />
+        <div class="slider-labels"><span>0 · grid failure</span><span>10 MW eq.</span></div>
+        <div class="preset-row"><button data-s="10">Normal</button><button data-s="7.3">7.3</button><button data-s="6.6">6.6</button><button data-s="5.2">5.2</button><button data-s="0">Failure</button><button id="autoDemoBtn" class="auto-demo">▶ Auto demo</button></div>
+        <div class="metrics"><div><span>Safe capacity</span><b id="safeValue">9.7 MW</b></div><div><span>Served demand</span><b id="servedValue">9.5 MW</b></div><div><span>System state</span><b id="stateValue" class="ok">Normal</b></div></div>
+        <div class="explain" id="scenarioExplain">All requested loads fit inside the safe capacity, so no load is shed.</div>
+      </div>
+      <div class="load-board" id="loadBoard"></div>
+    </div>
+    <div class="sim-footer"><b>How to read this demo:</b> Green = ON, red = curtailed. At partial shortage, the controller keeps protected loads first and uses remaining capacity for the best feasible flexible-load combination.</div>
+  </div>
+</section>
+
+<section class="story-section" id="impact" data-scene="solution" data-flow="normal">
+  <div class="section-inner">
+    <p class="section-no">08 · EXPECTED IMPACT</p>
+    <h2>Why this matters for Bangladesh.</h2>
+    <div class="impact-list">
+      <article><b>Critical continuity</b><span>Servers, education and essential household loads can continue longer during shortage.</span></article>
+      <article><b>Less unnecessary interruption</b><span>Partial shortages do not automatically require a complete local blackout.</span></article>
+      <article><b>Better utilization</b><span>Available power is used closer to its safe limit instead of leaving avoidable unused capacity.</span></article>
+      <article><b>Lower backup waste</b><span>Flexible loads can be curtailed so battery energy and generator fuel last longer.</span></article>
+      <article><b>Fairer access</b><span>Comparable flexible loads can rotate instead of repeatedly sacrificing the same user.</span></article>
+      <article><b>Scalable idea</b><span>The same demand-management concept can grow from a campus/home prototype to buildings, microgrids and community systems.</span></article>
+    </div>
+    <div class="final-line"><span>We cannot create extra electricity.</span><b>We can use limited electricity more safely, efficiently and fairly.</b></div>
+  </div>
+</section>
+</main>
+
+<script src="vendor/three.global.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
